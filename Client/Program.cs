@@ -19,10 +19,18 @@ internal class Program
             .AddServiceBus(builder =>
             {
                 configuration.GetSection(ServiceBusOptions.SectionName).Bind(builder.Options);
+
+                builder
+                    .AddMessageHandler((ResponseMessage message) =>
+                    {
+                        AnsiConsole.MarkupLine($"{Colors.Apply($"[{nameof(ResponseMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(message.Id.ToString())}'", HandlerType.ClassDirectMessage)}");
+
+                        return Task.CompletedTask;
+                    });
             })
             .AddAzureStorageQueues(builder =>
             {
-                builder.AddOptions("azure", new()
+                builder.AddOptions("hopper-samples", new()
                 {
                     ConnectionString = "UseDevelopmentStorage=true;"
                 });
@@ -30,10 +38,10 @@ internal class Program
 
         var commandOptions = new Dictionary<string, Command>
         {
-            ["deferred"] = new("Send a deferred message (waits 5 seconds)", "wheat4", 1),
-            ["email"] = new("Send simulated e-mail processing (demonstrates dependency injection)", "lightslategrey", 1),
-            ["request"] = new("Send request message (will receive response)", "darkseagreen", 1),
-            ["exit"] = new("(exit)", "darkmagenta", 100)
+            ["deferred"] = new("Send a deferred message (waits 5 seconds)", "wheat4"),
+            ["email"] = new("Send simulated e-mail processing (demonstrates dependency injection)", "lightslategrey"),
+            ["request"] = new("Send request message (will receive response)", "darkseagreen"),
+            ["exit"] = new("(exit)", "darkmagenta")
         };
 
         var selectedKey = string.Empty;
@@ -56,9 +64,12 @@ internal class Program
                     Show("Sent an 'EmailMessage`...");
                     break;
                 }
+                case "request":
+                {
+                    Show("Sent a 'RequestMessage`...");
+                    break;
+                }
             }
-
-            AnsiConsole.WriteLine();
 
             selectedKey = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
@@ -77,6 +88,11 @@ internal class Program
                 case "email":
                 {
                     await serviceBus.SendAsync(new EmailMessage());
+                    break;
+                }
+                case "request":
+                {
+                    await serviceBus.SendAsync(new RequestMessage());
                     break;
                 }
             }

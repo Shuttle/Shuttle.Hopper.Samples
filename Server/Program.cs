@@ -6,6 +6,7 @@ using Shared;
 using Shuttle.Hopper;
 using Shuttle.Hopper.AzureStorageQueues;
 using Spectre.Console;
+using System;
 
 namespace Server;
 
@@ -59,6 +60,15 @@ internal class Program
                                         AnsiConsole.MarkupLine($"{Colors.Apply($"[delegate/direct message/{nameof(EmailMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(message.Id.ToString())}'", handlerType)}");
 
                                         await emailService.SendAsync(message.Id);
+                                    })
+                                    .AddMessageHandler(async (RequestMessage message, IServiceBus serviceBus) =>
+                                    {
+                                        AnsiConsole.MarkupLine($"{Colors.Apply($"[delegate/direct message/{nameof(RequestMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(message.Id.ToString())}'", handlerType)}");
+
+                                        await serviceBus.SendAsync(new ResponseMessage
+                                        {
+                                            Id = message.Id
+                                        }, messageBuilder => messageBuilder.WithRecipient("azuresq://hopper-samples/hopper-client-work"));
                                     });
 
                                 break;
@@ -77,15 +87,25 @@ internal class Program
                                         AnsiConsole.MarkupLine($"{Colors.Apply($"[delegate/message/{nameof(EmailMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(context.Message.Id.ToString())}'", handlerType)}");
 
                                         await emailService.SendAsync(context.Message.Id);
+                                    })
+                                    .AddMessageHandler(async (IHandlerContext<RequestMessage> context) =>
+                                    {
+                                        AnsiConsole.MarkupLine($"{Colors.Apply($"[delegate/message/{nameof(RequestMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(context.Message.Id.ToString())}'", handlerType)}");
+
+                                        await context.SendAsync(new ResponseMessage
+                                        {
+                                            Id = context.Message.Id
+                                        }, messageBuilder => messageBuilder.Reply());
                                     });
 
-                                break;
+                                    break;
                             }
                             case HandlerType.ClassDirectMessage:
                             {
                                 builder
                                     .AddMessageHandler<DirectMessageHandlers.DeferredMessageHandler>()
-                                    .AddMessageHandler<DirectMessageHandlers.EmailMessageHandler>();
+                                    .AddMessageHandler<DirectMessageHandlers.EmailMessageHandler>()
+                                    .AddMessageHandler<DirectMessageHandlers.RequestMessageHandler>();
 
                                 break;
                             }
@@ -93,7 +113,8 @@ internal class Program
                             {
                                 builder
                                     .AddMessageHandler<MessageHandlers.DeferredMessageHandler>()
-                                    .AddMessageHandler<MessageHandlers.EmailMessageHandler>();
+                                    .AddMessageHandler<MessageHandlers.EmailMessageHandler>()
+                                    .AddMessageHandler<MessageHandlers.RequestMessageHandler>();
 
                                 break;
                             }
@@ -101,7 +122,7 @@ internal class Program
                     })
                     .AddAzureStorageQueues(builder =>
                     {
-                        builder.AddOptions("azure", new()
+                        builder.AddOptions("hopper-samples", new()
                         {
                             ConnectionString = configuration.GetConnectionString("azure")!
                         });
