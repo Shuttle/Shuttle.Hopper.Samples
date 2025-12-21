@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="LICENSE" />
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="Client/Client.csproj" />
+  <Project Path="Messages/Messages.csproj" />
+  <Project Path="Server/Server.csproj" />
+  <Project Path="Shared/Shared.csproj" />
+</Solution>

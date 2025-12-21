@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="Spectre.Console">
+      <HintPath>C:\Users\me\.nuget\packages\spectre.console\0.54.0\lib\net10.0\Spectre.Console.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>
