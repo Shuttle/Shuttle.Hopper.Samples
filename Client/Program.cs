@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Shared;
 using Shuttle.Hopper;
 using Shuttle.Hopper.AzureStorageQueues;
+using Shuttle.Hopper.Kafka;
 using Spectre.Console;
 
 namespace Client;
@@ -16,6 +17,18 @@ internal class Program
 
         var services = new ServiceCollection()
             .AddSingleton<IConfiguration>(configuration)
+            .AddKafka(builder =>
+            {
+                builder.AddOptions("local", new()
+                {
+                    BootstrapServers = "localhost:9092",
+                    EnableAutoCommit = true,
+                    EnableAutoOffsetStore = true,
+                    NumPartitions = 1,
+                    UseCancellationToken = false,
+                    ConsumeTimeout = TimeSpan.FromMilliseconds(25)
+                });
+            })
             .AddServiceBus(builder =>
             {
                 configuration.GetSection(ServiceBusOptions.SectionName).Bind(builder.Options);
@@ -42,6 +55,7 @@ internal class Program
             ["email"] = new("Send simulated e-mail processing (demonstrates dependency injection)", "lightslategrey"),
             ["request"] = new("Send request message (will receive response)", "darkseagreen"),
             ["publish"] = new("Send publish message (the published message will be handled by the subscriber)", "wheat1"),
+            ["stream"] = new("Produce stream messages", "darkolivegreen1_1"),
             ["exit"] = new("(exit)", "darkmagenta")
         };
 
@@ -75,6 +89,11 @@ internal class Program
                     Show("Sent a 'PublishMessage`...");
                     break;
                 }
+                case "stream":
+                {
+                    Show("Produced 'StreamMessage` instances...");
+                    break;
+                }
             }
 
             selectedKey = AnsiConsole.Prompt(
@@ -104,6 +123,18 @@ internal class Program
                 case "publish":
                 {
                     await serviceBus.SendAsync(new PublishMessage());
+                    break;
+                }
+                case "stream":
+                {
+                    for (var i = 1; i < 51; i++)
+                    {
+                        await serviceBus.SendAsync(new StreamMessage
+                        {
+                            Index = i
+                        });
+                    }
+
                     break;
                 }
             }

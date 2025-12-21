@@ -7,6 +7,7 @@ using Shuttle.Hopper;
 using Shuttle.Hopper.AzureStorageQueues;
 using Spectre.Console;
 using System;
+using Shuttle.Hopper.Kafka;
 using Shuttle.Hopper.SqlServer.Subscription;
 
 namespace Server;
@@ -28,6 +29,18 @@ internal class Program
                 services
                     .AddSingleton<IConfiguration>(configuration)
                     .AddSingleton<IEmailService, EmailService>()
+                    .AddKafka(builder =>
+                    {
+                        builder.AddOptions("local", new()
+                        {
+                            BootstrapServers = "localhost:9092",
+                            EnableAutoCommit = true,
+                            EnableAutoOffsetStore = true,
+                            NumPartitions = 1,
+                            UseCancellationToken = false,
+                            ConsumeTimeout = TimeSpan.FromMilliseconds(25)
+                        });
+                    })
                     .AddSqlServerSubscription(builder =>
                     {
                         builder.Options.ConnectionString = configuration.GetConnectionString("Hopper")!;
@@ -86,9 +99,15 @@ internal class Program
                                         {
                                             Id = message.Id
                                         });
+                                    })
+                                    .AddMessageHandler((StreamMessage message) =>
+                                    {
+                                        AnsiConsole.MarkupLine($"{Colors.Apply($"[delegate/direct message/{nameof(StreamMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(message.Id.ToString())}' / index = {message.Index}", handlerType)}");
+
+                                        return Task.CompletedTask;
                                     });
 
-                                break;
+                                    break;
                             }
                             case HandlerType.DelegateMessage:
                             {
@@ -113,6 +132,12 @@ internal class Program
                                         {
                                             Id = context.Message.Id
                                         }, messageBuilder => messageBuilder.Reply());
+                                    })
+                                    .AddMessageHandler((IHandlerContext<StreamMessage> context) =>
+                                    {
+                                        AnsiConsole.MarkupLine($"{Colors.Apply($"[delegate/message/{nameof(StreamMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(context.Message.Id.ToString())}' / index = {context.Message.Index}", handlerType)}");
+
+                                        return Task.CompletedTask;
                                     });
 
                                     break;
@@ -122,7 +147,8 @@ internal class Program
                                 builder
                                     .AddMessageHandler<DirectMessageHandlers.DeferredMessageHandler>()
                                     .AddMessageHandler<DirectMessageHandlers.EmailMessageHandler>()
-                                    .AddMessageHandler<DirectMessageHandlers.RequestMessageHandler>();
+                                    .AddMessageHandler<DirectMessageHandlers.RequestMessageHandler>()
+                                    .AddMessageHandler<DirectMessageHandlers.StreamMessageHandler>();
 
                                 break;
                             }
@@ -131,7 +157,8 @@ internal class Program
                                 builder
                                     .AddMessageHandler<MessageHandlers.DeferredMessageHandler>()
                                     .AddMessageHandler<MessageHandlers.EmailMessageHandler>()
-                                    .AddMessageHandler<MessageHandlers.RequestMessageHandler>();
+                                    .AddMessageHandler<MessageHandlers.RequestMessageHandler>()
+                                    .AddMessageHandler<MessageHandlers.StreamMessageHandler>();
 
                                 break;
                             }

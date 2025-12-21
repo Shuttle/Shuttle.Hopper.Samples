@@ -5,7 +5,7 @@ using Spectre.Console;
 
 namespace Server.MessageHandlers;
 
-public class RequestMessageHandler(IServiceBus serviceBus) : IMessageHandler<RequestMessage>
+public class RequestMessageHandler : IMessageHandler<RequestMessage>
 {
     public async Task ProcessMessageAsync(IHandlerContext<RequestMessage> context, CancellationToken cancellationToken = default)
     {
