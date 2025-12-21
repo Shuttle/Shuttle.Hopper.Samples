@@ -42,6 +42,24 @@ internal class Program
 
         while (selectedKey != "exit")
         {
+            AnsiConsole.Clear();
+
+            switch (selectedKey)
+            {
+                case "deferred":
+                {
+                    Show("Sent a 'DeferredMessage`...");
+                    break;
+                }
+                case "email":
+                {
+                    Show("Sent an 'EmailMessage`...");
+                    break;
+                }
+            }
+
+            AnsiConsole.WriteLine();
+
             selectedKey = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
                     .Title("Select the type of message to send:")
@@ -54,10 +72,19 @@ internal class Program
                 case "deferred":
                 {
                     await serviceBus.SendAsync(new DeferredMessage(), builder => builder.Defer(DateTime.Now.AddSeconds(5)));
-
+                    break;
+                }
+                case "email":
+                {
+                    await serviceBus.SendAsync(new EmailMessage());
                     break;
                 }
             }
         }
+    }
+
+    private static void Show(string message)
+    {
+        AnsiConsole.MarkupLine($"{Colors.Apply($"[{DateTime.UtcNow:O}] : ", "grey39")}{Colors.Apply(message, "grey58")}");
     }
 }

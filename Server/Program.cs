@@ -11,7 +11,7 @@ namespace Server;
 
 internal class Program
 {
-    static async Task Main(string[] args)
+    private static async Task Main()
     {
         var handlerType = HandlerTypes.Select();
 
@@ -22,6 +22,7 @@ internal class Program
 
                 services
                     .AddSingleton<IConfiguration>(configuration)
+                    .AddSingleton<IEmailService, EmailService>()
                     .AddServiceBus(builder =>
                     {
                         configuration.GetSection(ServiceBusOptions.SectionName).Bind(builder.Options);
@@ -45,33 +46,55 @@ internal class Program
                         switch (handlerType)
                         {
                             case HandlerType.DelegateDirectMessage:
-                                {
-                                    builder.AddMessageHandler((DeferredMessage message) =>
+                            {
+                                builder
+                                    .AddMessageHandler((DeferredMessage message) =>
                                     {
                                         AnsiConsole.MarkupLine($"{Colors.Apply($"[delegate/direct message/{nameof(DeferredMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(message.Id.ToString())}'", handlerType)}");
 
                                         return Task.CompletedTask;
+                                    })
+                                    .AddMessageHandler(async (EmailMessage message, IEmailService emailService) =>
+                                    {
+                                        AnsiConsole.MarkupLine($"{Colors.Apply($"[delegate/direct message/{nameof(EmailMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(message.Id.ToString())}'", handlerType)}");
+
+                                        await emailService.SendAsync(message.Id);
                                     });
-                                    break;
-                                }
+
+                                break;
+                            }
                             case HandlerType.DelegateMessage:
-                                {
-                                    builder.AddMessageHandler((IHandlerContext<DeferredMessage> context) =>
+                            {
+                                builder
+                                    .AddMessageHandler((IHandlerContext<DeferredMessage> context) =>
                                     {
                                         AnsiConsole.MarkupLine($"{Colors.Apply($"[delegate/message/{nameof(DeferredMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(context.Message.Id.ToString())}'", handlerType)}");
 
                                         return Task.CompletedTask;
+                                    })
+                                    .AddMessageHandler(async (IHandlerContext<EmailMessage> context, IEmailService emailService) =>
+                                    {
+                                        AnsiConsole.MarkupLine($"{Colors.Apply($"[delegate/message/{nameof(EmailMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(context.Message.Id.ToString())}'", handlerType)}");
+
+                                        await emailService.SendAsync(context.Message.Id);
                                     });
-                                    break;
-                                }
+
+                                break;
+                            }
                             case HandlerType.ClassDirectMessage:
                             {
-                                builder.AddMessageHandler<DirectMessageHandlers.DeferredMessageHandler>();
+                                builder
+                                    .AddMessageHandler<DirectMessageHandlers.DeferredMessageHandler>()
+                                    .AddMessageHandler<DirectMessageHandlers.EmailMessageHandler>();
+
                                 break;
                             }
                             case HandlerType.ClassMessage:
                             {
-                                builder.AddMessageHandler<MessageHandlers.DeferredMessageHandler>();
+                                builder
+                                    .AddMessageHandler<MessageHandlers.DeferredMessageHandler>()
+                                    .AddMessageHandler<MessageHandlers.EmailMessageHandler>();
+
                                 break;
                             }
                         }
