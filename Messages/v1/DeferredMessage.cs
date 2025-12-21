@@ -1,6 +1,6 @@
 ﻿namespace Messages.v1;
 
-public class RegisterMember
+public class DeferredMessage
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 }

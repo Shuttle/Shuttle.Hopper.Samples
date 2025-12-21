@@ -2,9 +2,9 @@
 
 public enum HandlerType
 {
-    DelegateMessage = 1,
-    DelegateContext = 2,
-    ClassMessage = 3,
-    ClassContext = 4
+    DelegateDirectMessage = 1,
+    DelegateMessage = 2,
+    ClassDirectMessage = 3,
+    ClassMessage = 4
 }
 

@@ -53,7 +53,7 @@ internal class Program
             {
                 case "deferred":
                 {
-                    await serviceBus.SendAsync(new RegisterMember(), builder => builder.Defer(DateTime.Now.AddSeconds(5)));
+                    await serviceBus.SendAsync(new DeferredMessage(), builder => builder.Defer(DateTime.Now.AddSeconds(5)));
 
                     break;
                 }

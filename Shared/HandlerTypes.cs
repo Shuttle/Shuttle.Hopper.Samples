@@ -4,7 +4,7 @@ namespace Shared;
 
 public class HandlerTypes
 {
-    public static List<HandlerType> All = [HandlerType.DelegateMessage, HandlerType.DelegateContext, HandlerType.ClassMessage, HandlerType.ClassContext];
+    public static List<HandlerType> All = [HandlerType.DelegateDirectMessage, HandlerType.DelegateMessage, HandlerType.ClassDirectMessage, HandlerType.ClassMessage];
 
     public static HandlerType Select()
     {
@@ -14,10 +14,10 @@ public class HandlerTypes
                 .AddChoices(All)
                 .UseConverter(handlerType => handlerType switch
                 {
-                    HandlerType.DelegateMessage => Colors.Apply("Delegate (Message)", handlerType),
-                    HandlerType.DelegateContext => Colors.Apply("Delegate (Context)", handlerType),
-                    HandlerType.ClassMessage => Colors.Apply("Class (Message)", handlerType),
-                    HandlerType.ClassContext => Colors.Apply("Class (Context)", handlerType),
+                    HandlerType.DelegateDirectMessage => Colors.Apply("Delegate (direct message)", handlerType),
+                    HandlerType.DelegateMessage => Colors.Apply("Delegate (message)", handlerType),
+                    HandlerType.ClassDirectMessage => Colors.Apply("Class (direct message)", handlerType),
+                    HandlerType.ClassMessage => Colors.Apply("Class (message)", handlerType),
                     _ => throw new ArgumentOutOfRangeException(nameof(handlerType), handlerType, null)
                 })
         );

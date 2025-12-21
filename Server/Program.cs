@@ -44,26 +44,36 @@ internal class Program
 
                         switch (handlerType)
                         {
+                            case HandlerType.DelegateDirectMessage:
+                                {
+                                    builder.AddMessageHandler((DeferredMessage message) =>
+                                    {
+                                        AnsiConsole.MarkupLine($"{Colors.Apply($"[delegate/direct message/{nameof(DeferredMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(message.Id.ToString())}'", handlerType)}");
+
+                                        return Task.CompletedTask;
+                                    });
+                                    break;
+                                }
                             case HandlerType.DelegateMessage:
                                 {
-                                    builder.AddMessageHandler(async (RegisterMember message) =>
+                                    builder.AddMessageHandler((IHandlerContext<DeferredMessage> context) =>
                                     {
-                                        AnsiConsole.MarkupLine($"{Colors.Apply($"[delegate/message/{nameof(RegisterMember)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(message.Id.ToString())}'", handlerType)}");
+                                        AnsiConsole.MarkupLine($"{Colors.Apply($"[delegate/message/{nameof(DeferredMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(context.Message.Id.ToString())}'", handlerType)}");
 
-                                        await Task.CompletedTask;
+                                        return Task.CompletedTask;
                                     });
                                     break;
                                 }
-                            case HandlerType.DelegateContext:
-                                {
-                                    builder.AddMessageHandler(async (IHandlerContext<RegisterMember> context) =>
-                                    {
-                                        AnsiConsole.MarkupLine($"{Colors.Apply($"[delegate/context/{nameof(RegisterMember)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(context.Message.Id.ToString())}'", handlerType)}");
-
-                                        await Task.CompletedTask;
-                                    });
-                                    break;
-                                }
+                            case HandlerType.ClassDirectMessage:
+                            {
+                                builder.AddMessageHandler<DirectMessageHandlers.DeferredMessageHandler>();
+                                break;
+                            }
+                            case HandlerType.ClassMessage:
+                            {
+                                builder.AddMessageHandler<MessageHandlers.DeferredMessageHandler>();
+                                break;
+                            }
                         }
                     })
                     .AddAzureStorageQueues(builder =>
