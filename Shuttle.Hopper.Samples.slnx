@@ -7,4 +7,5 @@
   <Project Path="Messages/Messages.csproj" />
   <Project Path="Server/Server.csproj" />
   <Project Path="Shared/Shared.csproj" />
+  <Project Path="Subscriber/Subscriber.csproj" Id="40d08aad-a57d-4407-80c5-0b7debd5551d" />
 </Solution>

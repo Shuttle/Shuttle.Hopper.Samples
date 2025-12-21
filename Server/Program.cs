@@ -7,6 +7,7 @@ using Shuttle.Hopper;
 using Shuttle.Hopper.AzureStorageQueues;
 using Spectre.Console;
 using System;
+using Shuttle.Hopper.SqlServer.Subscription;
 
 namespace Server;
 
@@ -19,11 +20,18 @@ internal class Program
         await Host.CreateDefaultBuilder()
             .ConfigureServices(services =>
             {
-                var configuration = new ConfigurationBuilder().AddJsonFile("appsettings.json").Build();
+                var configuration = new ConfigurationBuilder()
+                    .AddJsonFile("appsettings.json")
+                    .AddUserSecrets<Program>()
+                    .Build();
 
                 services
                     .AddSingleton<IConfiguration>(configuration)
                     .AddSingleton<IEmailService, EmailService>()
+                    .AddSqlServerSubscription(builder =>
+                    {
+                        builder.Options.ConnectionString = configuration.GetConnectionString("Hopper")!;
+                    })
                     .AddServiceBus(builder =>
                     {
                         configuration.GetSection(ServiceBusOptions.SectionName).Bind(builder.Options);
@@ -69,6 +77,15 @@ internal class Program
                                         {
                                             Id = message.Id
                                         }, messageBuilder => messageBuilder.WithRecipient("azuresq://hopper-samples/hopper-client-work"));
+                                    })
+                                    .AddMessageHandler(async (PublishMessage message, IServiceBus serviceBus) =>
+                                    {
+                                        AnsiConsole.MarkupLine($"{Colors.Apply($"[delegate/direct message/{nameof(PublishMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(message.Id.ToString())}'", handlerType)}");
+
+                                        await serviceBus.PublishAsync(new MessagePublished
+                                        {
+                                            Id = message.Id
+                                        });
                                     });
 
                                 break;
@@ -124,7 +141,7 @@ internal class Program
                     {
                         builder.AddOptions("hopper-samples", new()
                         {
-                            ConnectionString = configuration.GetConnectionString("azure")!
+                            ConnectionString = configuration.GetConnectionString("Azurite")!
                         });
                     });
             })

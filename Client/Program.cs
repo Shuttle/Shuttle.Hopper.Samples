@@ -41,6 +41,7 @@ internal class Program
             ["deferred"] = new("Send a deferred message (waits 5 seconds)", "wheat4"),
             ["email"] = new("Send simulated e-mail processing (demonstrates dependency injection)", "lightslategrey"),
             ["request"] = new("Send request message (will receive response)", "darkseagreen"),
+            ["publish"] = new("Send publish message (the published message will be handled by the subscriber)", "wheat1"),
             ["exit"] = new("(exit)", "darkmagenta")
         };
 
@@ -69,6 +70,11 @@ internal class Program
                     Show("Sent a 'RequestMessage`...");
                     break;
                 }
+                case "publish":
+                {
+                    Show("Sent a 'PublishMessage`...");
+                    break;
+                }
             }
 
             selectedKey = AnsiConsole.Prompt(
@@ -93,6 +99,11 @@ internal class Program
                 case "request":
                 {
                     await serviceBus.SendAsync(new RequestMessage());
+                    break;
+                }
+                case "publish":
+                {
+                    await serviceBus.SendAsync(new PublishMessage());
                     break;
                 }
             }
