@@ -1,148 +1,213 @@
 ﻿using Messages.v1;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Shared;
 using Shuttle.Hopper;
 using Shuttle.Hopper.AzureStorageQueues;
 using Shuttle.Hopper.Kafka;
-using Spectre.Console;
+using Terminal.Gui;
+using Attribute = Terminal.Gui.Attribute;
 
 namespace Client;
 
 internal class Program
 {
-    private static async Task Main()
+    private static readonly List<LogEntry> LogEntries = [];
+
+    private static ListView _outputListView = null!;
+    private static IServiceBus? _serviceBus;
+
+    private record LogEntry(string Message, Color Foreground)
     {
-        var configuration = new ConfigurationBuilder().AddJsonFile("appsettings.json").Build();
-
-        var services = new ServiceCollection()
-            .AddSingleton<IConfiguration>(configuration)
-            .AddKafka(builder =>
-            {
-                builder.AddOptions("local", new()
-                {
-                    BootstrapServers = "localhost:9092",
-                    EnableAutoCommit = true,
-                    EnableAutoOffsetStore = true,
-                    NumPartitions = 1,
-                    UseCancellationToken = false,
-                    ConsumeTimeout = TimeSpan.FromMilliseconds(25)
-                });
-            })
-            .AddServiceBus(builder =>
-            {
-                configuration.GetSection(ServiceBusOptions.SectionName).Bind(builder.Options);
-
-                builder
-                    .AddMessageHandler((ResponseMessage message) =>
-                    {
-                        AnsiConsole.MarkupLine($"{Colors.Apply($"[{nameof(ResponseMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(message.Id.ToString())}'", HandlerType.ClassDirectMessage)}");
-
-                        return Task.CompletedTask;
-                    });
-            })
-            .AddAzureStorageQueues(builder =>
-            {
-                builder.AddOptions("hopper-samples", new()
-                {
-                    ConnectionString = "UseDevelopmentStorage=true;"
-                });
-            });
-
-        var commandOptions = new Dictionary<string, Command>
-        {
-            ["deferred"] = new("Send a deferred message (waits 5 seconds)", "wheat4"),
-            ["email"] = new("Send simulated e-mail processing (demonstrates dependency injection)", "lightslategrey"),
-            ["request"] = new("Send request message (will receive response)", "darkseagreen"),
-            ["publish"] = new("Send publish message (the published message will be handled by the subscriber)", "wheat1"),
-            ["stream"] = new("Produce stream messages", "darkolivegreen1_1"),
-            ["exit"] = new("(exit)", "darkmagenta")
-        };
-
-        var selectedKey = string.Empty;
-
-        await using var serviceBus = await services.BuildServiceProvider().GetRequiredService<IServiceBus>().StartAsync();
-
-        while (selectedKey != "exit")
-        {
-            AnsiConsole.Clear();
-
-            switch (selectedKey)
-            {
-                case "deferred":
-                {
-                    Show("Sent a 'DeferredMessage`...");
-                    break;
-                }
-                case "email":
-                {
-                    Show("Sent an 'EmailMessage`...");
-                    break;
-                }
-                case "request":
-                {
-                    Show("Sent a 'RequestMessage`...");
-                    break;
-                }
-                case "publish":
-                {
-                    Show("Sent a 'PublishMessage`...");
-                    break;
-                }
-                case "stream":
-                {
-                    Show("Produced 'StreamMessage` instances...");
-                    break;
-                }
-            }
-
-            selectedKey = AnsiConsole.Prompt(
-                new SelectionPrompt<string>()
-                    .Title("Select the type of message to send:")
-                    .AddChoices(commandOptions.Keys)
-                    .UseConverter(key => Colors.Apply(commandOptions[key].Description, commandOptions[key].Color))
-            );
-
-            switch(selectedKey)
-            {
-                case "deferred":
-                {
-                    await serviceBus.SendAsync(new DeferredMessage(), builder => builder.Defer(DateTime.Now.AddSeconds(5)));
-                    break;
-                }
-                case "email":
-                {
-                    await serviceBus.SendAsync(new EmailMessage());
-                    break;
-                }
-                case "request":
-                {
-                    await serviceBus.SendAsync(new RequestMessage());
-                    break;
-                }
-                case "publish":
-                {
-                    await serviceBus.SendAsync(new PublishMessage());
-                    break;
-                }
-                case "stream":
-                {
-                    for (var i = 1; i < 51; i++)
-                    {
-                        await serviceBus.SendAsync(new StreamMessage
-                        {
-                            Index = i
-                        });
-                    }
-
-                    break;
-                }
-            }
-        }
+        public override string ToString() => Message;
     }
 
-    private static void Show(string message)
+    private class Command
     {
-        AnsiConsole.MarkupLine($"{Colors.Apply($"[{DateTime.UtcNow:O}] : ", "grey39")}{Colors.Apply(message, "grey58")}");
+        public string Key { get; init; } = string.Empty;
+        public string Description { get; init; } = string.Empty;
+        public Color Color { get; init; }
+
+        public override string ToString() => Description;
+    }
+
+    private static void Main()
+    {
+        Application.Init();
+
+        var defaultScheme = new ColorScheme()
+        {
+            Normal = Application.Driver.MakeAttribute(Color.White, Color.Black),
+            Focus = Application.Driver.MakeAttribute(Color.Black, Color.Gray),
+            HotNormal = Application.Driver.MakeAttribute(Color.BrightCyan, Color.Black),
+            HotFocus = Application.Driver.MakeAttribute(Color.BrightCyan, Color.Gray)
+        };
+
+        var top = Application.Top;
+        top.ColorScheme = defaultScheme;
+
+        var promptWin = new Window("Message Prompts")
+        {
+            X = 0,
+            Y = 0,
+            Width = Dim.Fill(),
+            Height = Dim.Percent(40),
+            ColorScheme = defaultScheme
+        };
+
+        var outputWin = new Window("System Output (Press Ctrl+Q to Exit)")
+        {
+            X = 0,
+            Y = Pos.Bottom(promptWin),
+            Width = Dim.Fill(),
+            Height = Dim.Fill(),
+            ColorScheme = defaultScheme
+        };
+
+        var commands = new List<Command>
+        {
+            new() { Key = "deferred", Description = "Send a deferred message (waits 5 seconds)", Color = Color.Brown },
+            new() { Key = "email", Description = "Send simulated e-mail processing (demonstrates dependency injection)", Color = Color.Gray },
+            new() { Key = "request", Description = "Send request message (will receive response)", Color = Color.Green },
+            new() { Key = "publish", Description = "Send publish message (the published message will be handled by the subscriber)", Color = Color.BrightYellow },
+            new() { Key = "stream", Description = "Produce stream messages", Color = Color.BrightGreen },
+            new() { Key = "exit", Description = "(exit)", Color = Color.Magenta }
+        };
+
+        var listView = new ListView(commands)
+        {
+            X = 0,
+            Y = 0,
+            Width = Dim.Fill(),
+            Height = Dim.Fill(),
+            CanFocus = true,
+            ColorScheme = defaultScheme
+        };
+
+        _outputListView = new ListView(LogEntries)
+        {
+            X = 0,
+            Y = 0,
+            Width = Dim.Fill(),
+            Height = Dim.Fill(),
+            CanFocus = false,
+            ColorScheme = defaultScheme
+        };
+
+        _outputListView.RowRender += (args) =>
+        {
+            var entry = LogEntries[args.Row];
+            args.RowAttribute = new Attribute(entry.Foreground, Color.Black);
+        };
+
+        promptWin.Add(listView);
+        outputWin.Add(_outputListView);
+        top.Add(promptWin, outputWin);
+
+        Task.Run(async () =>
+        {
+            try
+            {
+                Log("Initializing services...", Color.Cyan);
+                var configuration = new ConfigurationBuilder().AddJsonFile("appsettings.json").Build();
+
+                var services = new ServiceCollection()
+                    .AddSingleton<IConfiguration>(configuration)
+                    .AddKafka(builder =>
+                    {
+                        builder.AddOptions("local", new()
+                        {
+                            BootstrapServers = "localhost:9092",
+                            EnableAutoCommit = true,
+                            EnableAutoOffsetStore = true,
+                            NumPartitions = 1,
+                            UseCancellationToken = false,
+                            ConsumeTimeout = TimeSpan.FromMilliseconds(25)
+                        });
+                    })
+                    .AddServiceBus(builder =>
+                    {
+                        configuration.GetSection(ServiceBusOptions.SectionName).Bind(builder.Options);
+                        builder.AddMessageHandler((ResponseMessage message) =>
+                        {
+                            Log($"[RECV] Response ID: {message.Id}", Color.BrightGreen);
+                            return Task.CompletedTask;
+                        });
+                    })
+                    .AddAzureStorageQueues(builder =>
+                    {
+                        builder.AddOptions("hopper-samples", new() { ConnectionString = "UseDevelopmentStorage=true;" });
+                    });
+
+                var provider = services.BuildServiceProvider();
+                _serviceBus = await provider.GetRequiredService<IServiceBus>().StartAsync();
+                Log("Service Bus Started. Select a command above.", Color.BrightCyan);
+            }
+            catch (Exception ex)
+            {
+                Log($"STARTUP ERROR: {ex.Message}", Color.Red);
+            }
+        });
+
+        listView.OpenSelectedItem += async (args) =>
+        {
+            var cmd = (Command)args.Value;
+
+            if (cmd.Key == "exit")
+            {
+                Application.RequestStop();
+                return;
+            }
+
+            if (_serviceBus == null)
+            {
+                Log("Error: Bus not initialized.", Color.Red);
+                return;
+            }
+
+            Log($"Action: Executing {cmd.Key}...", cmd.Color);
+
+            try
+            {
+                switch (cmd.Key)
+                {
+                    case "deferred": await _serviceBus.SendAsync(new DeferredMessage(), b => b.Defer(DateTime.Now.AddSeconds(5))); break;
+                    case "email": await _serviceBus.SendAsync(new EmailMessage()); break;
+                    case "request": await _serviceBus.SendAsync(new RequestMessage()); break;
+                    case "publish": await _serviceBus.SendAsync(new PublishMessage()); break;
+                    case "stream": for (var i = 1; i < 51; i++) await _serviceBus.SendAsync(new StreamMessage { Index = i }); break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"Send Error: {ex.Message}", Color.Red);
+            }
+        };
+
+        Application.Run();
+        Application.Shutdown();
+
+        if (_serviceBus != null)
+        {
+            Console.WriteLine("Closing Service Bus connections...");
+            _serviceBus.Dispose();
+        }
+
+        Console.ResetColor();
+        Console.Clear();
+        Console.WriteLine("------------------------------------------");
+        Console.WriteLine("Client has shut down successfully.");
+        Console.WriteLine("------------------------------------------");
+
+        Environment.Exit(0);
+    }
+
+    private static void Log(string message, Color color)
+    {
+        Application.MainLoop.Invoke(() =>
+        {
+            LogEntries.Add(new($"[{DateTime.Now:HH:mm:ss}] {message}", color));
+            _outputListView.SetSource(LogEntries.ToList());
+            _outputListView.MoveDown();
+        });
     }
 }
