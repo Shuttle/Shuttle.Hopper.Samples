@@ -73,7 +73,7 @@ internal class Program
             new() { Key = "exit", Description = "(exit)", Color = Color.Magenta }
         };
 
-        var listView = new ListView(commands)
+        var commandListView = new ListView(commands)
         {
             X = 0,
             Y = 0,
@@ -83,7 +83,17 @@ internal class Program
             ColorScheme = defaultScheme
         };
 
-        _outputListView = new ListView(LogEntries)
+        commandListView.RowRender += args =>
+        {
+            if (commandListView.SelectedItem == args.Row)
+            {
+                return;
+            }
+
+            args.RowAttribute = new Attribute(commands[args.Row].Color, Color.Black);
+        };
+
+        _outputListView = new(LogEntries)
         {
             X = 0,
             Y = 0,
@@ -93,13 +103,12 @@ internal class Program
             ColorScheme = defaultScheme
         };
 
-        _outputListView.RowRender += (args) =>
+        _outputListView.RowRender += args =>
         {
-            var entry = LogEntries[args.Row];
-            args.RowAttribute = new Attribute(entry.Foreground, Color.Black);
+            args.RowAttribute = new Attribute(LogEntries[args.Row].Foreground, Color.Black);
         };
 
-        promptWin.Add(listView);
+        promptWin.Add(commandListView);
         outputWin.Add(_outputListView);
         top.Add(promptWin, outputWin);
 
@@ -148,7 +157,7 @@ internal class Program
             }
         });
 
-        listView.OpenSelectedItem += async (args) =>
+        commandListView.OpenSelectedItem += async (args) =>
         {
             var cmd = (Command)args.Value;
 
@@ -207,7 +216,14 @@ internal class Program
         {
             LogEntries.Add(new($"[{DateTime.Now:HH:mm:ss}] {message}", color));
             _outputListView.SetSource(LogEntries.ToList());
-            _outputListView.MoveDown();
+
+            if (LogEntries.Count <= 0)
+            {
+                return;
+            }
+
+            _outputListView.SelectedItem = LogEntries.Count - 1;
+            _outputListView.EnsureSelectedItemVisible();
         });
     }
 }
