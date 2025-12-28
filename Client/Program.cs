@@ -167,23 +167,44 @@ internal class Program
                 return;
             }
 
-            if (_serviceBus == null)
-            {
-                Log("Error: Bus not initialized.", Color.Red);
-                return;
-            }
-
             Log($"Action: Executing {cmd.Key}...", cmd.Color);
 
             try
             {
                 switch (cmd.Key)
                 {
-                    case "deferred": await _serviceBus.SendAsync(new DeferredMessage(), b => b.Defer(DateTime.Now.AddSeconds(5))); break;
-                    case "email": await _serviceBus.SendAsync(new EmailMessage()); break;
-                    case "request": await _serviceBus.SendAsync(new RequestMessage()); break;
-                    case "publish": await _serviceBus.SendAsync(new PublishMessage()); break;
-                    case "stream": for (var i = 1; i < 51; i++) await _serviceBus.SendAsync(new StreamMessage { Index = i }); break;
+                    case "deferred":
+                    {
+                        await _serviceBus.SendAsync(new DeferredMessage(), b => b.Defer(DateTime.Now.AddSeconds(5)));
+                        break;
+                    }
+
+                    case "email":
+                    {
+                        await _serviceBus.SendAsync(new EmailMessage());
+                        break;
+                    }
+
+                    case "request":
+                    {
+                        await _serviceBus.SendAsync(new RequestMessage());
+                        break;
+                    }
+
+                    case "publish":
+                    {
+                        await _serviceBus.SendAsync(new PublishMessage());
+                        break;
+                    }
+
+                    case "stream":
+                    {
+                        for (var i = 1; i < 51; i++)
+                        {
+                            await _serviceBus.SendAsync(new StreamMessage { Index = i });
+                        }
+                        break;
+                    }
                 }
             }
             catch (Exception ex)
