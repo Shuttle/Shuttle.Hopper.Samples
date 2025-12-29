@@ -167,6 +167,12 @@ internal class Program
                 return;
             }
 
+            if (_serviceBus == null)
+            {
+                Log("Error: Bus not initialized.", Color.Red);
+                return;
+            }
+
             Log($"Action: Executing {cmd.Key}...", cmd.Color);
 
             try
