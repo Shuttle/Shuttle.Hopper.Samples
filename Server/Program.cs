@@ -6,7 +6,6 @@ using Shared;
 using Shuttle.Hopper;
 using Shuttle.Hopper.AzureStorageQueues;
 using Spectre.Console;
-using System;
 using Shuttle.Hopper.Kafka;
 using Shuttle.Hopper.SqlServer.Subscription;
 
@@ -29,36 +28,45 @@ internal class Program
                 services
                     .AddSingleton<IConfiguration>(configuration)
                     .AddSingleton<IEmailService, EmailService>()
-                    .AddKafka(builder =>
+                    .AddHopper(hopperBuilder =>
                     {
-                        builder.AddOptions("local", new()
-                        {
-                            BootstrapServers = "localhost:9092",
-                            EnableAutoCommit = true,
-                            EnableAutoOffsetStore = true,
-                            NumPartitions = 1,
-                            UseCancellationToken = false,
-                            ConsumeTimeout = TimeSpan.FromMilliseconds(25)
-                        });
-                    })
-                    .AddSqlServerSubscription(builder =>
-                    {
-                        builder.Options.ConnectionString = configuration.GetConnectionString("Hopper")!;
-                    })
-                    .AddServiceBus(builder =>
-                    {
-                        configuration.GetSection(ServiceBusOptions.SectionName).Bind(builder.Options);
+                        configuration.GetSection(HopperOptions.SectionName).Bind(hopperBuilder.Options);
 
-                        builder.Options.AddMessageHandlers = false;
+                        hopperBuilder
+                            .UseAzureStorageQueues(builder =>
+                            {
+                                builder.AddOptions("hopper-samples", new()
+                                {
+                                    ConnectionString = configuration.GetConnectionString("Azurite")!
+                                });
+                            })
+                            .UseKafka(builder =>
+                            {
+                                builder.AddOptions("local", new()
+                                {
+                                    BootstrapServers = "localhost:9092",
+                                    EnableAutoCommit = true,
+                                    EnableAutoOffsetStore = true,
+                                    NumPartitions = 1,
+                                    UseCancellationToken = false,
+                                    ConsumeTimeout = TimeSpan.FromMilliseconds(25)
+                                });
+                            })
+                            .UseSqlServerSubscription(builder =>
+                            {
+                                builder.Options.ConnectionString = configuration.GetConnectionString("Hopper")!;
+                            });
 
-                        builder.Options.DeferredMessageProcessingHalted += (eventArgs, _) =>
+                        hopperBuilder.Options.AddMessageHandlers = false;
+
+                        hopperBuilder.Options.DeferredMessageProcessingHalted += (eventArgs, _) =>
                         {
                             Console.WriteLine($"[deferred processing halted] : until = {eventArgs.RestartDateTime}");
 
                             return Task.CompletedTask;
                         };
 
-                        builder.Options.DeferredMessageProcessingAdjusted += (eventArgs, _) =>
+                        hopperBuilder.Options.DeferredMessageProcessingAdjusted += (eventArgs, _) =>
                         {
                             Console.WriteLine($"[deferred processing adjusted] : next = {eventArgs.NextProcessingDateTime}");
 
@@ -69,7 +77,7 @@ internal class Program
                         {
                             case HandlerType.DelegateDirectMessage:
                             {
-                                builder
+                                hopperBuilder
                                     .AddMessageHandler((DeferredMessage message) =>
                                     {
                                         AnsiConsole.MarkupLine($"{Colors.Apply($"[delegate/direct message/{nameof(DeferredMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(message.Id.ToString())}'", handlerType)}");
@@ -111,7 +119,7 @@ internal class Program
                             }
                             case HandlerType.DelegateMessage:
                             {
-                                builder
+                                hopperBuilder
                                     .AddMessageHandler((IHandlerContext<DeferredMessage> context) =>
                                     {
                                         AnsiConsole.MarkupLine($"{Colors.Apply($"[delegate/message/{nameof(DeferredMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(context.Message.Id.ToString())}'", handlerType)}");
@@ -144,7 +152,7 @@ internal class Program
                             }
                             case HandlerType.ClassDirectMessage:
                             {
-                                builder
+                                hopperBuilder
                                     .AddMessageHandler<DirectMessageHandlers.DeferredMessageHandler>()
                                     .AddMessageHandler<DirectMessageHandlers.EmailMessageHandler>()
                                     .AddMessageHandler<DirectMessageHandlers.RequestMessageHandler>()
@@ -154,7 +162,7 @@ internal class Program
                             }
                             case HandlerType.ClassMessage:
                             {
-                                builder
+                                hopperBuilder
                                     .AddMessageHandler<MessageHandlers.DeferredMessageHandler>()
                                     .AddMessageHandler<MessageHandlers.EmailMessageHandler>()
                                     .AddMessageHandler<MessageHandlers.RequestMessageHandler>()
@@ -163,13 +171,6 @@ internal class Program
                                 break;
                             }
                         }
-                    })
-                    .AddAzureStorageQueues(builder =>
-                    {
-                        builder.AddOptions("hopper-samples", new()
-                        {
-                            ConnectionString = configuration.GetConnectionString("Azurite")!
-                        });
                     });
             })
             .Build()

@@ -16,25 +16,28 @@ internal class Program
     private static ListView _outputListView = null!;
     private static IServiceBus? _serviceBus;
 
-    private record LogEntry(string Message, Color Foreground)
+    private static void Log(string message, Color color)
     {
-        public override string ToString() => Message;
-    }
+        Application.MainLoop.Invoke(() =>
+        {
+            LogEntries.Add(new($"[{DateTime.Now:HH:mm:ss}] {message}", color));
+            _outputListView.SetSource(LogEntries.ToList());
 
-    private class Command
-    {
-        public string Key { get; init; } = string.Empty;
-        public string Description { get; init; } = string.Empty;
-        public Color Color { get; init; }
+            if (LogEntries.Count <= 0)
+            {
+                return;
+            }
 
-        public override string ToString() => Description;
+            _outputListView.SelectedItem = LogEntries.Count - 1;
+            _outputListView.EnsureSelectedItemVisible();
+        });
     }
 
     private static void Main()
     {
         Application.Init();
 
-        var defaultScheme = new ColorScheme()
+        var defaultScheme = new ColorScheme
         {
             Normal = Application.Driver.MakeAttribute(Color.White, Color.Black),
             Focus = Application.Driver.MakeAttribute(Color.Black, Color.Gray),
@@ -121,30 +124,32 @@ internal class Program
 
                 var services = new ServiceCollection()
                     .AddSingleton<IConfiguration>(configuration)
-                    .AddKafka(builder =>
+                    .AddHopper(hopperBuilder =>
                     {
-                        builder.AddOptions("local", new()
-                        {
-                            BootstrapServers = "localhost:9092",
-                            EnableAutoCommit = true,
-                            EnableAutoOffsetStore = true,
-                            NumPartitions = 1,
-                            UseCancellationToken = false,
-                            ConsumeTimeout = TimeSpan.FromMilliseconds(25)
-                        });
-                    })
-                    .AddServiceBus(builder =>
-                    {
-                        configuration.GetSection(ServiceBusOptions.SectionName).Bind(builder.Options);
-                        builder.AddMessageHandler((ResponseMessage message) =>
-                        {
-                            Log($"[RECV] Response ID: {message.Id}", Color.BrightGreen);
-                            return Task.CompletedTask;
-                        });
-                    })
-                    .AddAzureStorageQueues(builder =>
-                    {
-                        builder.AddOptions("hopper-samples", new() { ConnectionString = "UseDevelopmentStorage=true;" });
+                        configuration.GetSection(HopperOptions.SectionName).Bind(hopperBuilder.Options);
+
+                        hopperBuilder
+                            .UseAzureStorageQueues(builder =>
+                            {
+                                builder.AddOptions("hopper-samples", new() { ConnectionString = "UseDevelopmentStorage=true;" });
+                            })
+                            .UseKafka(builder =>
+                            {
+                                builder.AddOptions("local", new()
+                                {
+                                    BootstrapServers = "localhost:9092",
+                                    EnableAutoCommit = true,
+                                    EnableAutoOffsetStore = true,
+                                    NumPartitions = 1,
+                                    UseCancellationToken = false,
+                                    ConsumeTimeout = TimeSpan.FromMilliseconds(25)
+                                });
+                            })
+                            .AddMessageHandler((ResponseMessage message) =>
+                            {
+                                Log($"[RECV] Response ID: {message.Id}", Color.BrightGreen);
+                                return Task.CompletedTask;
+                            });
                     });
 
                 var provider = services.BuildServiceProvider();
@@ -157,7 +162,7 @@ internal class Program
             }
         });
 
-        commandListView.OpenSelectedItem += async (args) =>
+        commandListView.OpenSelectedItem += async args =>
         {
             var cmd = (Command)args.Value;
 
@@ -209,6 +214,7 @@ internal class Program
                         {
                             await _serviceBus.SendAsync(new StreamMessage { Index = i });
                         }
+
                         break;
                     }
                 }
@@ -237,20 +243,23 @@ internal class Program
         Environment.Exit(0);
     }
 
-    private static void Log(string message, Color color)
+    private class Command
     {
-        Application.MainLoop.Invoke(() =>
+        public Color Color { get; init; }
+        public string Description { get; init; } = string.Empty;
+        public string Key { get; init; } = string.Empty;
+
+        public override string ToString()
         {
-            LogEntries.Add(new($"[{DateTime.Now:HH:mm:ss}] {message}", color));
-            _outputListView.SetSource(LogEntries.ToList());
+            return Description;
+        }
+    }
 
-            if (LogEntries.Count <= 0)
-            {
-                return;
-            }
-
-            _outputListView.SelectedItem = LogEntries.Count - 1;
-            _outputListView.EnsureSelectedItemVisible();
-        });
+    private record LogEntry(string Message, Color Foreground)
+    {
+        public override string ToString()
+        {
+            return Message;
+        }
     }
 }

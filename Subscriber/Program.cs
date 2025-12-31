@@ -13,7 +13,7 @@ namespace Subscriber;
 
 internal class Program
 {
-    static async Task Main()
+    private static async Task Main()
     {
         await Host.CreateDefaultBuilder()
             .ConfigureServices(services =>
@@ -25,29 +25,29 @@ internal class Program
 
                 services
                     .AddSingleton<IConfiguration>(configuration)
-                    .AddSqlServerSubscription(builder =>
+                    .AddHopper(hopperBuilder =>
                     {
-                        builder.Options.ConnectionString = configuration.GetConnectionString("Hopper")!;
-                    })
-                    .AddServiceBus(builder =>
-                    {
-                        configuration.GetSection(ServiceBusOptions.SectionName).Bind(builder.Options);
+                        configuration.GetSection(HopperOptions.SectionName).Bind(hopperBuilder.Options);
 
-                        builder.AddSubscription<MessagePublished>();
+                        hopperBuilder
+                            .UseAzureStorageQueues(builder =>
+                            {
+                                builder.AddOptions("hopper-samples", new()
+                                {
+                                    ConnectionString = Guard.AgainstEmpty(configuration.GetConnectionString("Azurite"))
+                                });
+                            })
+                            .UseSqlServerSubscription(builder =>
+                            {
+                                builder.Options.ConnectionString = configuration.GetConnectionString("Hopper")!;
+                            })
+                            .AddSubscription<MessagePublished>()
+                            .AddMessageHandler(async (MessagePublished message) =>
+                            {
+                                AnsiConsole.MarkupLine($"{Colors.Apply($"[delegate/direct message/{nameof(MessagePublished)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(message.Id.ToString())}'", HandlerType.DelegateDirectMessage)}");
 
-                        builder.AddMessageHandler(async (MessagePublished message) =>
-                        {
-                            AnsiConsole.MarkupLine($"{Colors.Apply($"[delegate/direct message/{nameof(MessagePublished)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(message.Id.ToString())}'", HandlerType.DelegateDirectMessage)}");
-
-                            await Task.CompletedTask;
-                        });
-                    })
-                    .AddAzureStorageQueues(builder =>
-                    {
-                        builder.AddOptions("hopper-samples", new()
-                        {
-                            ConnectionString = Guard.AgainstEmpty(configuration.GetConnectionString("Azurite"))
-                        });
+                                await Task.CompletedTask;
+                            });
                     });
             })
             .Build()
