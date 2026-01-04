@@ -186,7 +186,7 @@ internal class Program
                 {
                     case "deferred":
                     {
-                        await _serviceBus.SendAsync(new DeferredMessage(), b => b.Defer(DateTime.Now.AddSeconds(5)));
+                        await _serviceBus.SendAsync(new DeferredMessage(), b => b.DeferUntil(DateTime.Now.AddSeconds(5)));
                         break;
                     }
 

@@ -61,14 +61,14 @@ internal class Program
 
                         hopperBuilder.Options.DeferredMessageProcessingHalted += (eventArgs, _) =>
                         {
-                            Console.WriteLine($"[deferred processing halted] : until = {eventArgs.RestartDateTime}");
+                            Console.WriteLine($"[deferred processing halted] : until = {eventArgs.RestartAt}");
 
                             return Task.CompletedTask;
                         };
 
                         hopperBuilder.Options.DeferredMessageProcessingAdjusted += (eventArgs, _) =>
                         {
-                            Console.WriteLine($"[deferred processing adjusted] : next = {eventArgs.NextProcessingDateTime}");
+                            Console.WriteLine($"[deferred processing adjusted] : next = {eventArgs.NextProcessingAt}");
 
                             return Task.CompletedTask;
                         };
@@ -139,7 +139,7 @@ internal class Program
                                         await context.SendAsync(new ResponseMessage
                                         {
                                             Id = context.Message.Id
-                                        }, messageBuilder => messageBuilder.Reply());
+                                        }, messageBuilder => messageBuilder.AsReply());
                                     })
                                     .AddMessageHandler((IHandlerContext<StreamMessage> context) =>
                                     {

@@ -14,6 +14,6 @@ public class RequestMessageHandler : IMessageHandler<RequestMessage>
         await context.SendAsync(new ResponseMessage
         {
             Id = context.Message.Id
-        }, messageBuilder => messageBuilder.Reply(), cancellationToken);
+        }, messageBuilder => messageBuilder.AsReply(), cancellationToken);
     }
 }
