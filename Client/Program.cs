@@ -14,7 +14,8 @@ internal class Program
     private static readonly List<LogEntry> LogEntries = [];
 
     private static ListView _outputListView = null!;
-    private static IServiceBus? _serviceBus;
+    private static IBus? _bus;
+    private static IBusControl? _busControl;
 
     private static void Log(string message, Color color)
     {
@@ -153,7 +154,8 @@ internal class Program
                     });
 
                 var provider = services.BuildServiceProvider();
-                _serviceBus = await provider.GetRequiredService<IServiceBus>().StartAsync();
+                _bus = provider.GetRequiredService<IBus>();
+                _busControl = await provider.GetRequiredService<IBusControl>().StartAsync();
                 Log("Service Bus Started. Select a command above.", Color.BrightCyan);
             }
             catch (Exception ex)
@@ -172,7 +174,7 @@ internal class Program
                 return;
             }
 
-            if (_serviceBus == null)
+            if (_busControl == null || _bus == null)
             {
                 Log("Error: Bus not initialized.", Color.Red);
                 return;
@@ -186,25 +188,25 @@ internal class Program
                 {
                     case "deferred":
                     {
-                        await _serviceBus.SendAsync(new DeferredMessage(), b => b.DeferUntil(DateTime.Now.AddSeconds(5)));
+                        await _bus.SendAsync(new DeferredMessage(), b => b.DeferUntil(DateTime.Now.AddSeconds(5)));
                         break;
                     }
 
                     case "email":
                     {
-                        await _serviceBus.SendAsync(new EmailMessage());
+                        await _bus.SendAsync(new EmailMessage());
                         break;
                     }
 
                     case "request":
                     {
-                        await _serviceBus.SendAsync(new RequestMessage());
+                        await _bus.SendAsync(new RequestMessage());
                         break;
                     }
 
                     case "publish":
                     {
-                        await _serviceBus.SendAsync(new PublishMessage());
+                        await _bus.SendAsync(new PublishMessage());
                         break;
                     }
 
@@ -212,7 +214,7 @@ internal class Program
                     {
                         for (var i = 1; i < 51; i++)
                         {
-                            await _serviceBus.SendAsync(new StreamMessage { Index = i });
+                            await _bus.SendAsync(new StreamMessage { Index = i });
                         }
 
                         break;
@@ -228,10 +230,10 @@ internal class Program
         Application.Run();
         Application.Shutdown();
 
-        if (_serviceBus != null)
+        if (_busControl != null)
         {
             Console.WriteLine("Closing Service Bus connections...");
-            _serviceBus.Dispose();
+            _busControl.Dispose();
         }
 
         Console.ResetColor();

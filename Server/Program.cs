@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Server.MessageHandlers;
 using Shared;
 using Shuttle.Hopper;
 using Shuttle.Hopper.AzureStorageQueues;
@@ -75,7 +76,7 @@ internal class Program
 
                         switch (handlerType)
                         {
-                            case HandlerType.DelegateDirectMessage:
+                            case HandlerType.DelegateMessage:
                             {
                                 hopperBuilder
                                     .AddMessageHandler((DeferredMessage message) =>
@@ -90,20 +91,20 @@ internal class Program
 
                                         await emailService.SendAsync(message.Id);
                                     })
-                                    .AddMessageHandler(async (RequestMessage message, IServiceBus serviceBus) =>
+                                    .AddMessageHandler(async (RequestMessage message, IBus bus) =>
                                     {
                                         AnsiConsole.MarkupLine($"{Colors.Apply($"[delegate/direct message/{nameof(RequestMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(message.Id.ToString())}'", handlerType)}");
 
-                                        await serviceBus.SendAsync(new ResponseMessage
+                                        await bus.SendAsync(new ResponseMessage
                                         {
                                             Id = message.Id
                                         }, messageBuilder => messageBuilder.WithRecipient("azuresq://hopper-samples/hopper-client-work"));
                                     })
-                                    .AddMessageHandler(async (PublishMessage message, IServiceBus serviceBus) =>
+                                    .AddMessageHandler(async (PublishMessage message, IBus bus) =>
                                     {
                                         AnsiConsole.MarkupLine($"{Colors.Apply($"[delegate/direct message/{nameof(PublishMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(message.Id.ToString())}'", handlerType)}");
 
-                                        await serviceBus.PublishAsync(new MessagePublished
+                                        await bus.PublishAsync(new MessagePublished
                                         {
                                             Id = message.Id
                                         });
@@ -117,7 +118,7 @@ internal class Program
 
                                     break;
                             }
-                            case HandlerType.DelegateMessage:
+                            case HandlerType.DelegateContextMessage:
                             {
                                 hopperBuilder
                                     .AddMessageHandler((IHandlerContext<DeferredMessage> context) =>
@@ -150,23 +151,23 @@ internal class Program
 
                                     break;
                             }
-                            case HandlerType.ClassDirectMessage:
-                            {
-                                hopperBuilder
-                                    .AddMessageHandler<DirectMessageHandlers.DeferredMessageHandler>()
-                                    .AddMessageHandler<DirectMessageHandlers.EmailMessageHandler>()
-                                    .AddMessageHandler<DirectMessageHandlers.RequestMessageHandler>()
-                                    .AddMessageHandler<DirectMessageHandlers.StreamMessageHandler>();
-
-                                break;
-                            }
                             case HandlerType.ClassMessage:
                             {
                                 hopperBuilder
-                                    .AddMessageHandler<MessageHandlers.DeferredMessageHandler>()
-                                    .AddMessageHandler<MessageHandlers.EmailMessageHandler>()
-                                    .AddMessageHandler<MessageHandlers.RequestMessageHandler>()
-                                    .AddMessageHandler<MessageHandlers.StreamMessageHandler>();
+                                    .AddMessageHandler<DeferredMessageHandler>()
+                                    .AddMessageHandler<EmailMessageHandler>()
+                                    .AddMessageHandler<RequestMessageHandler>()
+                                    .AddMessageHandler<StreamMessageHandler>();
+
+                                break;
+                            }
+                            case HandlerType.ClassContextMessage:
+                            {
+                                hopperBuilder
+                                    .AddMessageHandler<ContextMessageHandlers.DeferredMessageHandler>()
+                                    .AddMessageHandler<ContextMessageHandlers.EmailMessageHandler>()
+                                    .AddMessageHandler<ContextMessageHandlers.RequestMessageHandler>()
+                                    .AddMessageHandler<ContextMessageHandlers.StreamMessageHandler>();
 
                                 break;
                             }

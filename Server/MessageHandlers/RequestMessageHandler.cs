@@ -5,15 +5,15 @@ using Spectre.Console;
 
 namespace Server.MessageHandlers;
 
-public class RequestMessageHandler : IMessageHandler<RequestMessage>
+public class RequestMessageHandler(IBus bus) : IMessageHandler<RequestMessage>
 {
-    public async Task ProcessMessageAsync(IHandlerContext<RequestMessage> context, CancellationToken cancellationToken = default)
+    public async Task ProcessMessageAsync(RequestMessage message, CancellationToken cancellationToken = default)
     {
-        AnsiConsole.MarkupLine($"{Colors.Apply($"[class/message/{nameof(RequestMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(context.Message.Id.ToString())}'", HandlerType.ClassMessage)}");
+        AnsiConsole.MarkupLine($"{Colors.Apply($"[class/direct message/{nameof(RequestMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(message.Id.ToString())}'", HandlerType.ClassMessage)}");
 
-        await context.SendAsync(new ResponseMessage
+        await bus.SendAsync(new ResponseMessage
         {
-            Id = context.Message.Id
-        }, messageBuilder => messageBuilder.AsReply(), cancellationToken);
+            Id = message.Id
+        }, messageBuilder => messageBuilder.WithRecipient("azuresq://hopper-samples/hopper-client-work"), cancellationToken);
     }
 }

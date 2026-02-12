@@ -7,10 +7,10 @@ namespace Server.MessageHandlers;
 
 public class EmailMessageHandler(IEmailService emailService) : IMessageHandler<EmailMessage>
 {
-    public async Task ProcessMessageAsync(IHandlerContext<EmailMessage> context, CancellationToken cancellationToken = default)
+    public async Task ProcessMessageAsync(EmailMessage message, CancellationToken cancellationToken = default)
     {
-        AnsiConsole.MarkupLine($"{Colors.Apply($"[class/message/{nameof(EmailMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(context.Message.Id.ToString())}'", HandlerType.ClassMessage)}");
-
-        await emailService.SendAsync(context.Message.Id);
+        AnsiConsole.MarkupLine($"{Colors.Apply($"[class/direct message/{nameof(EmailMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(message.Id.ToString())}'", HandlerType.ClassMessage)}");
+        
+        await emailService.SendAsync(message.Id);
     }
 }

@@ -44,7 +44,7 @@ internal class Program
                             .AddSubscription<MessagePublished>()
                             .AddMessageHandler(async (MessagePublished message) =>
                             {
-                                AnsiConsole.MarkupLine($"{Colors.Apply($"[delegate/direct message/{nameof(MessagePublished)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(message.Id.ToString())}'", HandlerType.DelegateDirectMessage)}");
+                                AnsiConsole.MarkupLine($"{Colors.Apply($"[delegate/direct message/{nameof(MessagePublished)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(message.Id.ToString())}'", HandlerType.DelegateMessage)}");
 
                                 await Task.CompletedTask;
                             });

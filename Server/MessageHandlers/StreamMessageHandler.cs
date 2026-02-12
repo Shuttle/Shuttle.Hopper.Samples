@@ -7,9 +7,9 @@ namespace Server.MessageHandlers;
 
 public class StreamMessageHandler : IMessageHandler<StreamMessage>
 {
-    public Task ProcessMessageAsync(IHandlerContext<StreamMessage> context, CancellationToken cancellationToken = default)
+    public Task ProcessMessageAsync(StreamMessage message, CancellationToken cancellationToken = default)
     {
-        AnsiConsole.MarkupLine($"{Colors.Apply($"[class/message/{nameof(StreamMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(context.Message.Id.ToString())}' / index = {context.Message.Index}", HandlerType.ClassDirectMessage)}");
+        AnsiConsole.MarkupLine($"{Colors.Apply($"[class/direct message/{nameof(StreamMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(message.Id.ToString())}' / index = {message.Index}", HandlerType.ClassMessage)}");
 
         return Task.CompletedTask;
     }

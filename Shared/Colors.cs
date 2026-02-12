@@ -8,10 +8,10 @@ public static class Colors
     {
         return handlerType switch
         {
-            HandlerType.DelegateDirectMessage => $"[paleturquoise1]{text}[/]",
-            HandlerType.DelegateMessage => $"[darkseagreen1]{text}[/]",
-            HandlerType.ClassDirectMessage => $"[darkseagreen2_1]{text}[/]",
-            HandlerType.ClassMessage => $"[palegreen1_1]{text}[/]",
+            HandlerType.DelegateMessage => $"[paleturquoise1]{text}[/]",
+            HandlerType.DelegateContextMessage => $"[darkseagreen1]{text}[/]",
+            HandlerType.ClassMessage => $"[darkseagreen2_1]{text}[/]",
+            HandlerType.ClassContextMessage => $"[palegreen1_1]{text}[/]",
             _ => throw new ArgumentOutOfRangeException(nameof(handlerType), handlerType, null)
         };
     }
