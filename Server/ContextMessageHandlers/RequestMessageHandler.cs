@@ -7,7 +7,7 @@ namespace Server.ContextMessageHandlers;
 
 public class RequestMessageHandler : IContextMessageHandler<RequestMessage>
 {
-    public async Task ProcessMessageAsync(IHandlerContext<RequestMessage> context, CancellationToken cancellationToken = default)
+    public async Task HandleAsync(IHandlerContext<RequestMessage> context, CancellationToken cancellationToken = default)
     {
         AnsiConsole.MarkupLine($"{Colors.Apply($"[class/message/{nameof(RequestMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(context.Message.Id.ToString())}'", HandlerType.ClassContextMessage)}");
 

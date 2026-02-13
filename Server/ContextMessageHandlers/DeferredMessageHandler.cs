@@ -7,7 +7,7 @@ namespace Server.ContextMessageHandlers;
 
 public class DeferredMessageHandler : IContextMessageHandler<DeferredMessage>
 {
-    public Task ProcessMessageAsync(IHandlerContext<DeferredMessage> context, CancellationToken cancellationToken = default)
+    public Task HandleAsync(IHandlerContext<DeferredMessage> context, CancellationToken cancellationToken = default)
     {
         AnsiConsole.MarkupLine($"{Colors.Apply($"[class/message/{nameof(DeferredMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(context.Message.Id.ToString())}'", HandlerType.ClassContextMessage)}");
 

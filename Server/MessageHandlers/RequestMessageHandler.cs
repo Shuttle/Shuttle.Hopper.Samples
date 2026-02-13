@@ -7,7 +7,7 @@ namespace Server.MessageHandlers;
 
 public class RequestMessageHandler(IBus bus) : IMessageHandler<RequestMessage>
 {
-    public async Task ProcessMessageAsync(RequestMessage message, CancellationToken cancellationToken = default)
+    public async Task HandleAsync(RequestMessage message, CancellationToken cancellationToken = default)
     {
         AnsiConsole.MarkupLine($"{Colors.Apply($"[class/direct message/{nameof(RequestMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(message.Id.ToString())}'", HandlerType.ClassMessage)}");
 
