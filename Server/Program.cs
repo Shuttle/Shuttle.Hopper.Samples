@@ -1,4 +1,5 @@
-﻿using Messages.v1;
+﻿using Confluent.Kafka;
+using Messages.v1;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -6,9 +7,9 @@ using Server.MessageHandlers;
 using Shared;
 using Shuttle.Hopper;
 using Shuttle.Hopper.AzureStorageQueues;
-using Spectre.Console;
 using Shuttle.Hopper.Kafka;
 using Shuttle.Hopper.SqlServer.Subscription;
+using Spectre.Console;
 
 namespace Server;
 
@@ -142,6 +143,15 @@ internal class Program
                                             Id = context.Message.Id
                                         }, messageBuilder => messageBuilder.AsReply());
                                     })
+                                    .AddMessageHandler(async (IHandlerContext<PublishMessage> context) =>
+                                    {
+                                        AnsiConsole.MarkupLine($"{Colors.Apply($"[delegate/direct message/{nameof(PublishMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(context.Message.Id.ToString())}'", handlerType)}");
+
+                                        await context.PublishAsync(new MessagePublished
+                                        {
+                                            Id = context.Message.Id
+                                        });
+                                    })
                                     .AddMessageHandler((IHandlerContext<StreamMessage> context) =>
                                     {
                                         AnsiConsole.MarkupLine($"{Colors.Apply($"[delegate/message/{nameof(StreamMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(context.Message.Id.ToString())}' / index = {context.Message.Index}", handlerType)}");
@@ -157,6 +167,7 @@ internal class Program
                                     .AddMessageHandler<DeferredMessageHandler>()
                                     .AddMessageHandler<EmailMessageHandler>()
                                     .AddMessageHandler<RequestMessageHandler>()
+                                    .AddMessageHandler<PublishMessageHandler>()
                                     .AddMessageHandler<StreamMessageHandler>();
 
                                 break;
@@ -167,6 +178,7 @@ internal class Program
                                     .AddMessageHandler<ContextMessageHandlers.DeferredMessageHandler>()
                                     .AddMessageHandler<ContextMessageHandlers.EmailMessageHandler>()
                                     .AddMessageHandler<ContextMessageHandlers.RequestMessageHandler>()
+                                    .AddMessageHandler<ContextMessageHandlers.PublishMessageHandler>()
                                     .AddMessageHandler<ContextMessageHandlers.StreamMessageHandler>();
 
                                 break;

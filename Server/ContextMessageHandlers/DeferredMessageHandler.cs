@@ -9,7 +9,7 @@ public class DeferredMessageHandler : IContextMessageHandler<DeferredMessage>
 {
     public Task HandleAsync(IHandlerContext<DeferredMessage> context, CancellationToken cancellationToken = default)
     {
-        AnsiConsole.MarkupLine($"{Colors.Apply($"[class/message/{nameof(DeferredMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(context.Message.Id.ToString())}'", HandlerType.ClassContextMessage)}");
+        AnsiConsole.MarkupLine($"{Colors.Apply($"[class/context message/{nameof(DeferredMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(context.Message.Id.ToString())}'", HandlerType.ClassContextMessage)}");
 
         return Task.CompletedTask;
     }

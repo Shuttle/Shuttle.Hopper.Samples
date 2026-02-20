@@ -9,7 +9,7 @@ public class EmailMessageHandler(IEmailService emailService) : IContextMessageHa
 {
     public async Task HandleAsync(IHandlerContext<EmailMessage> context, CancellationToken cancellationToken = default)
     {
-        AnsiConsole.MarkupLine($"{Colors.Apply($"[class/message/{nameof(EmailMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(context.Message.Id.ToString())}'", HandlerType.ClassContextMessage)}");
+        AnsiConsole.MarkupLine($"{Colors.Apply($"[class/context message/{nameof(EmailMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(context.Message.Id.ToString())}'", HandlerType.ClassContextMessage)}");
 
         await emailService.SendAsync(context.Message.Id);
     }
