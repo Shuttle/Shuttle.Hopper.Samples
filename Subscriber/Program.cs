@@ -25,29 +25,27 @@ internal class Program
 
                 services
                     .AddSingleton<IConfiguration>(configuration)
-                    .AddHopper(hopperBuilder =>
+                    .AddHopper(options =>
                     {
-                        configuration.GetSection(HopperOptions.SectionName).Bind(hopperBuilder.Options);
+                        configuration.GetSection(HopperOptions.SectionName).Bind(options);
+                    })
+                    .UseAzureStorageQueues(builder =>
+                    {
+                        builder.Configure("hopper-samples", options =>
+                        {
+                            options.ConnectionString = Guard.AgainstEmpty(configuration.GetConnectionString("Azurite"));
+                        });
+                    })
+                    .UseSqlServerSubscription(options =>
+                    {
+                        options.ConnectionString = configuration.GetConnectionString("Hopper")!;
+                    })
+                    .AddSubscription<MessagePublished>()
+                    .AddMessageHandler(async (MessagePublished message) =>
+                    {
+                        AnsiConsole.MarkupLine($"{Colors.Apply($"[delegate/direct message/{nameof(MessagePublished)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(message.Id.ToString())}'", HandlerType.DelegateMessage)}");
 
-                        hopperBuilder
-                            .UseAzureStorageQueues(builder =>
-                            {
-                                builder.AddOptions("hopper-samples", new()
-                                {
-                                    ConnectionString = Guard.AgainstEmpty(configuration.GetConnectionString("Azurite"))
-                                });
-                            })
-                            .UseSqlServerSubscription(builder =>
-                            {
-                                builder.Options.ConnectionString = configuration.GetConnectionString("Hopper")!;
-                            })
-                            .AddSubscription<MessagePublished>()
-                            .AddMessageHandler(async (MessagePublished message) =>
-                            {
-                                AnsiConsole.MarkupLine($"{Colors.Apply($"[delegate/direct message/{nameof(MessagePublished)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(message.Id.ToString())}'", HandlerType.DelegateMessage)}");
-
-                                await Task.CompletedTask;
-                            });
+                        await Task.CompletedTask;
                     });
             })
             .Build()

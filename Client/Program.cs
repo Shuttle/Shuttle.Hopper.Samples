@@ -123,39 +123,43 @@ internal class Program
                 Log("Initializing services...", Color.Cyan);
                 var configuration = new ConfigurationBuilder().AddJsonFile("appsettings.json").Build();
 
-                var services = new ServiceCollection()
+                var provider = new ServiceCollection()
                     .AddSingleton<IConfiguration>(configuration)
-                    .AddHopper(hopperBuilder =>
+                    .AddHopper(options =>
                     {
-                        configuration.GetSection(HopperOptions.SectionName).Bind(hopperBuilder.Options);
+                        configuration.GetSection(HopperOptions.SectionName).Bind(options);
+                    })
+                    .UseAzureStorageQueues(builder =>
+                    {
+                        builder.Configure("hopper-samples", options =>
+                        {
+                            options.ConnectionString = "UseDevelopmentStorage=true;";
+                        });
+                    })
+                    .UseKafka(builder =>
+                    {
+                        builder.Configure("local", options =>
 
-                        hopperBuilder
-                            .UseAzureStorageQueues(builder =>
-                            {
-                                builder.AddOptions("hopper-samples", new() { ConnectionString = "UseDevelopmentStorage=true;" });
-                            })
-                            .UseKafka(builder =>
-                            {
-                                builder.AddOptions("local", new()
-                                {
-                                    BootstrapServers = "localhost:9092",
-                                    EnableAutoCommit = true,
-                                    EnableAutoOffsetStore = true,
-                                    NumPartitions = 1,
-                                    UseCancellationToken = false,
-                                    ConsumeTimeout = TimeSpan.FromMilliseconds(25)
-                                });
-                            })
-                            .AddMessageHandler((ResponseMessage message) =>
-                            {
-                                Log($"[RECV] Response ID: {message.Id}", Color.BrightGreen);
-                                return Task.CompletedTask;
-                            });
-                    });
+                        {
+                            options.BootstrapServers = "localhost:9092";
+                            options.EnableAutoCommit = true;
+                            options.EnableAutoOffsetStore = true;
+                            options.NumPartitions = 1;
+                            options.UseCancellationToken = false;
+                            options.ConsumeTimeout = TimeSpan.FromMilliseconds(25);
+                        });
+                    })
+                    .AddMessageHandler((ResponseMessage message) =>
+                    {
+                        Log($"[RECV] Response ID: {message.Id}", Color.BrightGreen);
+                        return Task.CompletedTask;
+                    })
+                    .Services
+                    .BuildServiceProvider();
 
-                var provider = services.BuildServiceProvider();
                 _bus = provider.GetRequiredService<IBus>();
                 _busControl = await provider.GetRequiredService<IBusControl>().StartAsync();
+
                 Log("Service Bus Started. Select a command above.", Color.BrightCyan);
             }
             catch (Exception ex)
