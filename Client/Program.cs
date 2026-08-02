@@ -1,9 +1,13 @@
 ﻿using Messages.v1;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Trace;
+using Shared;
 using Shuttle.Hopper;
 using Shuttle.Hopper.AzureStorageQueues;
 using Shuttle.Hopper.Kafka;
+using Shuttle.Hopper.OpenTelemetry;
 using Terminal.Gui;
 using Attribute = Terminal.Gui.Attribute;
 
@@ -16,6 +20,8 @@ internal class Program
     private static ListView _outputListView = null!;
     private static IBus? _bus;
     private static IBusControl? _busControl;
+    private static TracerProvider? _tracerProvider;
+    private static MeterProvider? _meterProvider;
 
     private static void Log(string message, Color color)
     {
@@ -123,12 +129,16 @@ internal class Program
                 Log("Initializing services...", Color.Cyan);
                 var configuration = new ConfigurationBuilder().AddJsonFile("appsettings.json").Build();
 
-                var provider = new ServiceCollection()
+                var services = new ServiceCollection()
                     .AddSingleton<IConfiguration>(configuration)
+                    .AddSampleOpenTelemetry(configuration, "Shuttle.Hopper.Samples.Client");
+
+                var provider = services
                     .AddHopper(options =>
                     {
                         configuration.GetSection(HopperOptions.SectionName).Bind(options);
                     })
+                    .AddOpenTelemetry()
                     .UseAzureStorageQueues(builder =>
                     {
                         builder.Configure("hopper-samples", options =>
@@ -156,6 +166,13 @@ internal class Program
                     })
                     .Services
                     .BuildServiceProvider();
+
+                // There's no Generic Host driving this app, so the TracerProvider/MeterProvider
+                // singletons must be resolved explicitly - that's what actually wires up their
+                // listeners against the ActivitySource/Meter; until then, StartActivity/instruments
+                // are no-ops.
+                _tracerProvider = provider.GetRequiredService<TracerProvider>();
+                _meterProvider = provider.GetRequiredService<MeterProvider>();
 
                 _bus = provider.GetRequiredService<IBus>();
                 _busControl = await provider.GetRequiredService<IBusControl>().StartAsync();
@@ -239,6 +256,10 @@ internal class Program
             Console.WriteLine("Closing Service Bus connections...");
             _busControl.Dispose();
         }
+
+        // Flush any buffered spans/metrics before the process exits.
+        _tracerProvider?.Dispose();
+        _meterProvider?.Dispose();
 
         Console.ResetColor();
         Console.Clear();

@@ -35,3 +35,20 @@ Add the following connection string to the `Hopper` database:
 ```
 
 Do the same for the `Subscriber` project.
+
+## OpenTelemetry
+
+`Client`, `Server` and `Subscriber` are all wired up with `Shuttle.Hopper.OpenTelemetry` and `Shuttle.Pipelines.OpenTelemetry` (see `Shared/OpenTelemetryExtensions.cs`), exporting both traces and metrics over OTLP to whatever is listening at the `OpenTelemetry:Endpoint` setting in each app's `appsettings.json` (defaults to `http://localhost:4317`).
+
+Start a local, free, open-source OTLP collector and viewer with:
+
+```bash
+docker compose up -d
+```
+
+This runs [`grafana/otel-lgtm`](https://github.com/grafana/docker-otel-lgtm), a single container bundling an OTLP collector with Grafana (traces via Tempo, metrics via Prometheus, logs via Loki) for viewing what comes in. Once it's up, open [http://localhost:3000](http://localhost:3000) (user `admin`, password `admin`) and use **Explore** to query:
+
+- Traces in the **Tempo** data source - search by service name (`Shuttle.Hopper.Samples.Client` / `.Server` / `.Subscriber`) to see the pipeline-level and per-message spans, including the send → receive trace linkage across processes.
+- Metrics in the **Prometheus** data source - metric names are prefixed `hopper_*` (from `Shuttle.Hopper.OpenTelemetry`) and `pipelines_*` (from `Shuttle.Pipelines.OpenTelemetry`) once Prometheus's dot-to-underscore naming conversion is applied.
+
+Run `docker compose down` to stop it when you're done.

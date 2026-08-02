@@ -7,6 +7,7 @@ using Shared;
 using Shuttle.Hopper;
 using Shuttle.Hopper.AzureStorageQueues;
 using Shuttle.Hopper.Kafka;
+using Shuttle.Hopper.OpenTelemetry;
 using Shuttle.Hopper.SqlServer.Subscription;
 using Spectre.Console;
 
@@ -28,7 +29,8 @@ internal class Program
 
                 services
                     .AddSingleton<IConfiguration>(configuration)
-                    .AddSingleton<IEmailService, EmailService>();
+                    .AddSingleton<IEmailService, EmailService>()
+                    .AddSampleOpenTelemetry(configuration, "Shuttle.Hopper.Samples.Server");
 
                 var hopperBuilder = services
                     .AddHopper(options =>
@@ -49,6 +51,7 @@ internal class Program
                             return Task.CompletedTask;
                         };
                     })
+                    .AddOpenTelemetry()
                     .UseAzureStorageQueues(builder =>
                     {
                         builder.Configure("hopper-samples", options =>

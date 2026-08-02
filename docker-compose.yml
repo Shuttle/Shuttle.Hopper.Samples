@@ -1,0 +1,9 @@
+services:
+  otel-lgtm:
+    image: grafana/otel-lgtm:latest
+    container_name: hopper-samples-otel-lgtm
+    restart: unless-stopped
+    ports:
+      - "3030:3000"   # Grafana UI - http://localhost:3030 (admin/admin)
+      - "4317:4317"   # OTLP gRPC receiver (matches OpenTelemetry:Endpoint in each app's appsettings.json)
+      - "4318:4318"   # OTLP HTTP receiver

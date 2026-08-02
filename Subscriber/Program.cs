@@ -6,6 +6,7 @@ using Shared;
 using Shuttle.Contract;
 using Shuttle.Hopper;
 using Shuttle.Hopper.AzureStorageQueues;
+using Shuttle.Hopper.OpenTelemetry;
 using Shuttle.Hopper.SqlServer.Subscription;
 using Spectre.Console;
 
@@ -25,10 +26,14 @@ internal class Program
 
                 services
                     .AddSingleton<IConfiguration>(configuration)
+                    .AddSampleOpenTelemetry(configuration, "Shuttle.Hopper.Samples.Subscriber");
+
+                services
                     .AddHopper(options =>
                     {
                         configuration.GetSection(HopperOptions.SectionName).Bind(options);
                     })
+                    .AddOpenTelemetry()
                     .UseAzureStorageQueues(builder =>
                     {
                         builder.Configure("hopper-samples", options =>
