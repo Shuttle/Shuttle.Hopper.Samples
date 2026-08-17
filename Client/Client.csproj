@@ -9,8 +9,8 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.5" />
-    <PackageReference Include="Shuttle.Hopper.AzureStorageQueues" Version="21.0.2" />
-    <PackageReference Include="Shuttle.Hopper.Kafka" Version="21.0.2" />
+    <PackageReference Include="Shuttle.Hopper.AzureStorageQueues" Version="22.0.1" />
+    <PackageReference Include="Shuttle.Hopper.Kafka" Version="22.0.1" />
     <PackageReference Include="Terminal.Gui" Version="1.19.0" />
   </ItemGroup>
 
