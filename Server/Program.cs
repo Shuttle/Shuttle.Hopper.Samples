@@ -49,6 +49,8 @@ internal class Program
                             return Task.CompletedTask;
                         };
                     })
+                    .AddInbox("priority")
+                    .AddInbox("stream")
                     .UseAzureStorageQueues(builder =>
                     {
                         builder.Configure("hopper-samples", options =>
@@ -113,6 +115,12 @@ internal class Program
                                 AnsiConsole.MarkupLine($"{Colors.Apply($"[delegate/direct message/{nameof(StreamMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(message.Id.ToString())}' / index = {message.Index}", handlerType)}");
 
                                 return Task.CompletedTask;
+                            })
+                            .AddMessageHandler((PriorityMessage message) =>
+                            {
+                                AnsiConsole.MarkupLine($"{Colors.Apply($"[delegate/direct message/{nameof(PriorityMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(message.Id.ToString())}' (additional 'priority' inbox)", handlerType)}");
+
+                                return Task.CompletedTask;
                             });
 
                         break;
@@ -155,6 +163,12 @@ internal class Program
                                 AnsiConsole.MarkupLine($"{Colors.Apply($"[delegate/message/{nameof(StreamMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(context.Message.Id.ToString())}' / index = {context.Message.Index}", handlerType)}");
 
                                 return Task.CompletedTask;
+                            })
+                            .AddMessageHandler((IHandlerContext<PriorityMessage> context) =>
+                            {
+                                AnsiConsole.MarkupLine($"{Colors.Apply($"[delegate/message/{nameof(PriorityMessage)}] : ", "grey")}{Colors.Apply($"id = '{Markup.Escape(context.Message.Id.ToString())}' (additional 'priority' inbox)", handlerType)}");
+
+                                return Task.CompletedTask;
                             });
 
                         break;
@@ -166,7 +180,8 @@ internal class Program
                             .AddMessageHandler<EmailMessageHandler>()
                             .AddMessageHandler<RequestMessageHandler>()
                             .AddMessageHandler<PublishMessageHandler>()
-                            .AddMessageHandler<StreamMessageHandler>();
+                            .AddMessageHandler<StreamMessageHandler>()
+                            .AddMessageHandler<PriorityMessageHandler>();
 
                         break;
                     }
@@ -177,7 +192,8 @@ internal class Program
                             .AddMessageHandler<ContextMessageHandlers.EmailMessageHandler>()
                             .AddMessageHandler<ContextMessageHandlers.RequestMessageHandler>()
                             .AddMessageHandler<ContextMessageHandlers.PublishMessageHandler>()
-                            .AddMessageHandler<ContextMessageHandlers.StreamMessageHandler>();
+                            .AddMessageHandler<ContextMessageHandlers.StreamMessageHandler>()
+                            .AddMessageHandler<ContextMessageHandlers.PriorityMessageHandler>();
 
                         break;
                     }

@@ -1,33 +1,33 @@
-﻿using Messages.v1;
+using System.Collections.ObjectModel;
+using Messages.v1;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Shuttle.Hopper;
 using Shuttle.Hopper.AzureStorageQueues;
 using Shuttle.Hopper.Kafka;
-using Terminal.Gui;
-using Attribute = Terminal.Gui.Attribute;
+using Terminal.Gui.App;
+using Terminal.Gui.Drawing;
+using Terminal.Gui.Input;
+using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
+using Attribute = Terminal.Gui.Drawing.Attribute;
 
 namespace Client;
 
 internal class Program
 {
-    private static readonly List<LogEntry> LogEntries = [];
+    private static readonly ObservableCollection<LogEntry> LogEntries = [];
 
+    private static IApplication _app = null!;
     private static ListView _outputListView = null!;
     private static IBus? _bus;
     private static IBusControl? _busControl;
 
     private static void Log(string message, Color color)
     {
-        Application.MainLoop.Invoke(() =>
+        _app.Invoke(() =>
         {
             LogEntries.Add(new($"[{DateTime.Now:HH:mm:ss}] {message}", color));
-            _outputListView.SetSource(LogEntries.ToList());
-
-            if (LogEntries.Count <= 0)
-            {
-                return;
-            }
 
             _outputListView.SelectedItem = LogEntries.Count - 1;
             _outputListView.EnsureSelectedItemVisible();
@@ -36,58 +36,66 @@ internal class Program
 
     private static void Main()
     {
-        Application.Init();
+        _app = Application.Create().Init();
 
-        var defaultScheme = new ColorScheme
+        var defaultScheme = new Scheme
         {
-            Normal = Application.Driver.MakeAttribute(Color.White, Color.Black),
-            Focus = Application.Driver.MakeAttribute(Color.Black, Color.Gray),
-            HotNormal = Application.Driver.MakeAttribute(Color.BrightCyan, Color.Black),
-            HotFocus = Application.Driver.MakeAttribute(Color.BrightCyan, Color.Gray)
+            Normal = new Attribute(Color.White, Color.Black),
+            Focus = new Attribute(Color.Black, Color.Gray),
+            HotNormal = new Attribute(Color.BrightCyan, Color.Black),
+            HotFocus = new Attribute(Color.BrightCyan, Color.Gray)
         };
 
-        var top = Application.Top;
-        top.ColorScheme = defaultScheme;
-
-        var promptWin = new Window("Message Prompts")
+        var top = new Window
         {
+            Title = "Shuttle.Hopper Client",
+            BorderStyle = LineStyle.None
+        };
+
+        top.SetScheme(defaultScheme);
+
+        var promptWin = new FrameView
+        {
+            Title = "Message Prompts",
             X = 0,
             Y = 0,
             Width = Dim.Fill(),
-            Height = Dim.Percent(40),
-            ColorScheme = defaultScheme
+            Height = Dim.Percent(40)
         };
 
-        var outputWin = new Window("System Output (Press Ctrl+Q to Exit)")
+        var outputWin = new FrameView
         {
+            Title = "System Output (Press Ctrl+Q to Exit)",
             X = 0,
             Y = Pos.Bottom(promptWin),
             Width = Dim.Fill(),
-            Height = Dim.Fill(),
-            ColorScheme = defaultScheme
+            Height = Dim.Fill()
         };
 
-        var commands = new List<Command>
+        var commands = new ObservableCollection<Command>
         {
-            new() { Key = "deferred", Description = "Send a deferred message (waits 5 seconds)", Color = Color.Brown },
+            new() { Key = "deferred", Description = "Send a deferred message (waits 5 seconds)", Color = Color.Yellow },
             new() { Key = "email", Description = "Send simulated e-mail processing (demonstrates dependency injection)", Color = Color.Gray },
             new() { Key = "request", Description = "Send request message (will receive response)", Color = Color.Green },
             new() { Key = "publish", Description = "Send publish message (the published message will be handled by the subscriber)", Color = Color.BrightYellow },
             new() { Key = "stream", Description = "Produce stream messages", Color = Color.BrightGreen },
+            new() { Key = "priority", Description = "Send priority message (handled by the server's additional 'priority' inbox)", Color = Color.BrightMagenta },
             new() { Key = "exit", Description = "(exit)", Color = Color.Magenta }
         };
 
-        var commandListView = new ListView(commands)
+        var commandListView = new ListView
         {
             X = 0,
             Y = 0,
             Width = Dim.Fill(),
             Height = Dim.Fill(),
-            CanFocus = true,
-            ColorScheme = defaultScheme
+            CanFocus = true
         };
 
-        commandListView.RowRender += args =>
+        commandListView.SetSource(commands);
+        commandListView.SelectedItem = 0;
+
+        commandListView.RowRender += (_, args) =>
         {
             if (commandListView.SelectedItem == args.Row)
             {
@@ -97,17 +105,18 @@ internal class Program
             args.RowAttribute = new Attribute(commands[args.Row].Color, Color.Black);
         };
 
-        _outputListView = new(LogEntries)
+        _outputListView = new()
         {
             X = 0,
             Y = 0,
             Width = Dim.Fill(),
             Height = Dim.Fill(),
-            CanFocus = false,
-            ColorScheme = defaultScheme
+            CanFocus = false
         };
 
-        _outputListView.RowRender += args =>
+        _outputListView.SetSource(LogEntries);
+
+        _outputListView.RowRender += (_, args) =>
         {
             args.RowAttribute = new Attribute(LogEntries[args.Row].Foreground, Color.Black);
         };
@@ -115,6 +124,17 @@ internal class Program
         promptWin.Add(commandListView);
         outputWin.Add(_outputListView);
         top.Add(promptWin, outputWin);
+
+        top.KeyDown += (_, key) =>
+        {
+            if (key != Key.Q.WithCtrl)
+            {
+                return;
+            }
+
+            key.Handled = true;
+            _app.RequestStop();
+        };
 
         Task.Run(async () =>
         {
@@ -168,13 +188,20 @@ internal class Program
             }
         });
 
-        commandListView.OpenSelectedItem += async args =>
+        commandListView.Accepting += async (_, args) =>
         {
-            var cmd = (Command)args.Value;
+            if (commandListView.SelectedItem is not { } selectedItem)
+            {
+                return;
+            }
+
+            args.Handled = true;
+
+            var cmd = commands[selectedItem];
 
             if (cmd.Key == "exit")
             {
-                Application.RequestStop();
+                _app.RequestStop();
                 return;
             }
 
@@ -214,6 +241,12 @@ internal class Program
                         break;
                     }
 
+                    case "priority":
+                    {
+                        await _bus.SendAsync(new PriorityMessage());
+                        break;
+                    }
+
                     case "stream":
                     {
                         for (var i = 1; i < 51; i++)
@@ -231,8 +264,9 @@ internal class Program
             }
         };
 
-        Application.Run();
-        Application.Shutdown();
+        _app.Run(top);
+        top.Dispose();
+        _app.Dispose();
 
         if (_busControl != null)
         {
