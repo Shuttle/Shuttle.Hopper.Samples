@@ -1,12 +1,12 @@
 # Shuttle.Hopper.Samples
 
-Samples that illustrate how to get started with various messaing patterns in Shuttle.Hopper.
+Samples that illustrate how to get started with various messaging patterns in Shuttle.Hopper.
 
 ## Azurite
 
-This sample makes use of [Shuttle.Esb.AzureStorageQueues](https://github.com/Shuttle/Shuttle.Esb.AzureStorageQueues) for the message queues.  Local Azure Storage Queues should be provided by [Azurite](https://learn.microsoft.com/en-us/azure/storage/common/storage-use-azurite).
+This sample makes use of [Shuttle.Hopper.AzureStorageQueues](https://github.com/Shuttle/Shuttle.Hopper.AzureStorageQueues) for the message queues.  Local Azure Storage Queues should be provided by [Azurite](https://learn.microsoft.com/en-us/azure/storage/common/storage-use-azurite).
 
-### Additional inbox
+## Additional inbox
 
 The `Server` processes an additional inbox named `priority` next to its primary inbox. It is registered using `AddInbox("priority")`, and its work queue is configured under `Shuttle:Hopper:AdditionalInboxes` in the `Server` project's `appsettings.json`:
 
@@ -21,11 +21,15 @@ The `Server` processes an additional inbox named `priority` next to its primary 
 
 The `Client` sends a `PriorityMessage` using the `priority` command. A message route in the `Client` project's `appsettings.json` sends it to the `hopper-server-priority-work` queue, where the additional inbox's own processor threads handle it. The primary inbox remains the server's identity, so replies and published events still use `hopper-server-work`.
 
-A second additional inbox named `stream` consumes the `kafka://local/stream-consumer-work` topic. The `Client` routes `StreamMessage` to it using the `stream` command, which shows that an additional inbox may use a different transport (Kafka) from the primary inbox (Azure Storage Queues).
+A second additional inbox named `stream`, registered using `AddInbox("stream")` and configured next to `priority` under `AdditionalInboxes`, consumes the `kafka://local/stream-consumer-work` topic. Neither additional inbox sets its own `DeferredTransportUri` or `ErrorTransportUri`, so both use those of the primary inbox. The `Client` routes `StreamMessage` to it using the `stream` command, which shows that an additional inbox may use a different transport (Kafka) from the primary inbox (Azure Storage Queues).
 
 ## Kafka
 
-The streaming sample makes use of [Kafka](https://kafka.apache.org/).
+The `stream` additional inbox makes use of [Shuttle.Hopper.Kafka](https://github.com/Shuttle/Shuttle.Hopper.Kafka) and therefore requires a running [Kafka](https://kafka.apache.org/) broker for both the `Client` and the `Server`, since the `Server` always registers the `stream` inbox.  A local broker may be started using `kafka.cmd`:
+
+```
+docker run -d --name broker -p 9092:9092 apache/kafka:latest
+```
 
 ## Sql Server
 
